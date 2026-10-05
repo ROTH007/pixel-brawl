@@ -43,12 +43,53 @@ export interface AttackDef {
   box: { x: number; y: number; w: number; h: number };
 }
 
-export const ATTACKS: Record<'punch' | 'kick', AttackDef> = {
-  punch: { startup: 0.06, active: 0.10, total: 0.28, damage: 8, knockback: 300,
-           box: { x: 10, y: -58, w: 42, h: 24 } },
-  kick:  { startup: 0.14, active: 0.12, total: 0.46, damage: 13, knockback: 430,
-           box: { x: 10, y: -36, w: 52, h: 26 } },
+export type AttackKind = 'punch' | 'kick' | 'special';
+
+export const ATTACKS: Record<AttackKind, AttackDef> = {
+  punch:   { startup: 0.06, active: 0.10, total: 0.28, damage: 8, knockback: 300,
+             box: { x: 10, y: -58, w: 42, h: 24 } },
+  kick:    { startup: 0.14, active: 0.12, total: 0.46, damage: 13, knockback: 430,
+             box: { x: 10, y: -36, w: 52, h: 26 } },
+  // Dash punch: rush forward and hit the first player you touch
+  special: { startup: 0.08, active: 0.22, total: 0.42, damage: 14, knockback: 520,
+             box: { x: 4, y: -60, w: 48, h: 44 } },
 };
+
+export const SPECIAL_COOLDOWN = 3;   // seconds between special moves
+export const SPECIAL_DASH = 680;     // dash speed px/s
+
+// ---------- Shield / block (ការពារ) ----------
+export const SHIELD_MAX = 100;
+export const SHIELD_DRAIN = 28;      // per second while holding block
+export const SHIELD_REGEN = 14;      // per second when not blocking
+export const SHIELD_HIT_MULT = 1.4;  // shield loses damage × this when hit
+export const SHIELD_BREAK_STUN = 1.6; // seconds dizzy when the shield breaks
+
+// ---------- Dodge (គេចខ្លួន) ----------
+export const ROLL_TIME = 0.32;       // block + left/right on the ground
+export const ROLL_SPEED = 470;
+export const ROLL_COOLDOWN = 0.5;
+export const AIR_DODGE_TIME = 0.3;   // block in the air (once per jump)
+
+// ---------- Items (វត្ថុធ្លាក់) ----------
+export const ITEM_KINDS = ['heal', 'power', 'speed', 'bomb'] as const;
+export type ItemKind = (typeof ITEM_KINDS)[number];
+export const ITEM_SPAWN_EVERY = 11;  // seconds
+export const MAX_ITEMS = 2;
+export const ITEM_LIFETIME = 15;
+export const ITEM_SIZE = 30;
+export const HEAL_AMOUNT = 30;
+export const POWER_TIME = 8;         // seconds of stronger hits
+export const POWER_MULT = 1.5;
+export const SPEED_TIME = 7;
+export const SPEED_MULT = 1.45;
+
+export const BOMB_FUSE = 2.2;        // explodes after this many seconds if it hits nothing
+export const BOMB_RADIUS = 80;
+export const BOMB_DAMAGE = 18;
+export const BOMB_KNOCKBACK = 560;
+export const BOMB_THROW_VX = 520;
+export const BOMB_THROW_VY = -420;
 
 // ---------- Map ----------
 export interface Platform { x: number; y: number; w: number; h: number; oneWay: boolean }
@@ -103,11 +144,14 @@ export function sanitizeAppearance(a: any): Appearance {
 
 // ---------- Input ----------
 export interface InputState {
-  left: boolean; right: boolean; jump: boolean; down: boolean; punch: boolean; kick: boolean;
+  left: boolean; right: boolean; jump: boolean; down: boolean;
+  punch: boolean; kick: boolean; block: boolean; special: boolean;
 }
 
 export const EMPTY_INPUT: InputState = {
-  left: false, right: false, jump: false, down: false, punch: false, kick: false,
+  left: false, right: false, jump: false, down: false,
+  punch: false, kick: false, block: false, special: false,
 };
 
-export type Anim = 'idle' | 'run' | 'jump' | 'fall' | 'punch' | 'kick' | 'hurt' | 'dead';
+export type Anim = 'idle' | 'run' | 'jump' | 'fall' | 'punch' | 'kick' | 'special'
+  | 'block' | 'roll' | 'hurt' | 'dizzy' | 'dead';

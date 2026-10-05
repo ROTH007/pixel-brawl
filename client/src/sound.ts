@@ -38,4 +38,12 @@ export const sfx = {
   go: () => tone(990, 0.3, 'square', 0.1),
   win: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.18, 'square', 0.08, undefined, i * 0.12)),
   click: () => tone(880, 0.04, 'square', 0.04),
+  // ---- V2 ----
+  block: () => { tone(1200, 0.06, 'square', 0.06, 900); tone(1800, 0.05, 'triangle', 0.04); },
+  shieldBreak: () => { tone(1400, 0.25, 'sawtooth', 0.08, 120); tone(700, 0.35, 'square', 0.06, 60, 0.05); },
+  dodge: () => tone(600, 0.12, 'triangle', 0.05, 200),
+  special: () => tone(200, 0.2, 'sawtooth', 0.07, 900),
+  pickup: () => [660, 880, 1320].forEach((f, i) => tone(f, 0.08, 'square', 0.06, undefined, i * 0.06)),
+  throw: () => tone(300, 0.15, 'triangle', 0.06, 700),
+  explode: () => { tone(120, 0.5, 'sawtooth', 0.14, 30); tone(60, 0.6, 'square', 0.1, 25, 0.03); },
 };

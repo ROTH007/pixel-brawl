@@ -1,19 +1,25 @@
 // ============================================================
 //  ArenaRoom — one lobby / match.  បន្ទប់មួយ = lobby មួយ
 //  Flow: waiting (free practice) → countdown → playing → ended → waiting
+//  V2: items drop from the sky, bombs, block/dodge/special
 // ============================================================
 import { Room, Client, matchMaker } from '@colyseus/core';
 import { GameState, Player } from './schema.ts';
-import { stepPlayer, stepAttack, isOutOfBounds, pickAnim } from './sim.ts';
+import {
+  stepPlayer, stepAttack, isOutOfBounds, pickAnim, resetCombatState,
+  spawnItem, stepItems, stepBombs, Emit,
+} from './sim.ts';
 import { verifyToken } from '../auth.ts';
 import { db, User } from '../db.ts';
 import {
-  TICK_MS, PATCH_MS, MAX_HP, START_LIVES, RESPAWN_INVULN, SPAWN_POINTS, InputState,
+  TICK_MS, PATCH_MS, MAX_HP, START_LIVES, RESPAWN_INVULN, SPAWN_POINTS, InputState, EMPTY_INPUT,
+  ITEM_SPAWN_EVERY, MAX_ITEMS,
 } from '../../../shared/game.ts';
 
 interface CreateOptions { token: string; roomName?: string; maxPlayers?: number; isPrivate?: boolean }
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid confusion
+const PRESS_KEYS = ['jump', 'punch', 'kick', 'down', 'block', 'special'] as const;
 
 async function uniqueCode() {
   for (;;) {
@@ -26,8 +32,8 @@ async function uniqueCode() {
 
 export class ArenaRoom extends Room<GameState> {
   state = new GameState();
-  private elapsed = 0;
-  private matchStartedWith = 0;
+  private itemTimer = ITEM_SPAWN_EVERY / 2;
+  private emit: Emit = (type, data) => this.broadcast(type, data);
 
   async onCreate(options: CreateOptions) {
     this.roomId = await uniqueCode();
@@ -44,14 +50,11 @@ export class ArenaRoom extends Room<GameState> {
       const p = this.state.players.get(client.sessionId);
       if (!p) return;
       const next: InputState = {
-        left: !!input?.left, right: !!input?.right, jump: !!input?.jump,
-        down: !!input?.down, punch: !!input?.punch, kick: !!input?.kick,
+        left: !!input?.left, right: !!input?.right, jump: !!input?.jump, down: !!input?.down,
+        punch: !!input?.punch, kick: !!input?.kick, block: !!input?.block, special: !!input?.special,
       };
       // remember new presses (false → true) until the next tick uses them
-      if (next.jump && !p.input.jump) p.pressed.jump = true;
-      if (next.punch && !p.input.punch) p.pressed.punch = true;
-      if (next.kick && !p.input.kick) p.pressed.kick = true;
-      if (next.down && !p.input.down) p.pressed.down = true;
+      for (const k of PRESS_KEYS) if (next[k] && !p.input[k]) p.pressed[k] = true;
       p.input = next;
     });
 
@@ -96,7 +99,7 @@ export class ArenaRoom extends Room<GameState> {
     const p = this.state.players.get(client.sessionId);
     if (!p) return;
     p.connected = false;
-    p.input = { left: false, right: false, jump: false, down: false, punch: false, kick: false };
+    p.input = { ...EMPTY_INPUT };
 
     if (!consented) {
       try {
@@ -119,10 +122,11 @@ export class ArenaRoom extends Room<GameState> {
   // ---------------------------------------------------------- game loop
   private update(dt: number) {
     dt = Math.min(dt, 0.05);
-    this.elapsed += dt;
     const players = [...this.state.players.values()];
     const now = this.clock.currentTime;
+    const canFight = this.state.phase === 'waiting' || this.state.phase === 'playing';
 
+    // 1) move everyone
     for (const p of players) {
       if (!p.alive) { p.anim = 'dead'; continue; }
       if (p.respawnT > 0) {
@@ -131,19 +135,32 @@ export class ArenaRoom extends Room<GameState> {
         p.anim = pickAnim(p);
         continue;
       }
-      stepPlayer(p, dt);
+      const bomb = stepPlayer(p, dt, this.emit);
+      if (bomb) this.state.bombs.set(bomb.id, bomb);
     }
 
-    const canFight = this.state.phase === 'waiting' || this.state.phase === 'playing';
+    // 2) attacks
     for (const p of players) {
       if (!p.alive || p.respawnT > 0) continue;
-      if (canFight) {
-        for (const h of stepAttack(p, players, dt, now)) this.broadcast('hit', h);
-      } else {
-        p.attack = null;
-      }
+      if (canFight) stepAttack(p, players, dt, now, this.emit);
+      else p.attack = null;
     }
 
+    // 3) items + bombs
+    if (canFight) {
+      this.itemTimer -= dt;
+      if (this.itemTimer <= 0) {
+        this.itemTimer = ITEM_SPAWN_EVERY;
+        if (this.state.items.size < MAX_ITEMS) {
+          const it = spawnItem();
+          this.state.items.set(it.id, it);
+        }
+      }
+    }
+    for (const id of stepItems([...this.state.items.values()], players, dt, this.emit)) this.state.items.delete(id);
+    for (const id of stepBombs([...this.state.bombs.values()], players, dt, now, this.emit)) this.state.bombs.delete(id);
+
+    // 4) knock-outs + animation names
     for (const p of players) {
       if (p.alive && p.respawnT <= 0 && (p.hp <= 0 || isOutOfBounds(p))) this.knockOut(p, now);
       p.anim = pickAnim(p);
@@ -156,10 +173,11 @@ export class ArenaRoom extends Room<GameState> {
     const killer = p.lastHitBy && now - p.lastHitAt < 6000 ? this.state.players.get(p.lastHitBy) : undefined;
     const ranked = this.state.phase === 'playing';
     if (killer && killer !== p && ranked) killer.kos++;
-    this.broadcast('ko', { id: p.id, x: p.x, y: p.y, by: killer?.name ?? '' });
+    this.broadcast('ko', { id: p.id, x: p.x, y: p.y, name: p.name, by: killer?.name ?? '' });
 
     p.attack = null;
     p.vx = p.vy = 0;
+    p.hasBomb = false;
     if (ranked) p.lives = Math.max(0, p.lives - 1);
     if (ranked && p.lives === 0) {
       p.alive = false;
@@ -192,10 +210,17 @@ export class ArenaRoom extends Room<GameState> {
   }
 
   // ---------------------------------------------------------- phases
+  private clearArena() {
+    this.state.items.clear();
+    this.state.bombs.clear();
+    this.itemTimer = ITEM_SPAWN_EVERY / 2;
+  }
+
   private startCountdown() {
     this.state.phase = 'countdown';
     this.state.countdown = 3;
     this.lock();
+    this.clearArena();
     this.updateMeta();
     const players = [...this.state.players.values()];
     players.forEach((p, i) => {
@@ -210,7 +235,6 @@ export class ArenaRoom extends Room<GameState> {
       if (this.state.countdown <= 0) {
         tick.clear();
         this.state.phase = 'playing';
-        this.matchStartedWith = players.length;
         for (const p of this.state.players.values()) p.invulnT = 0;
       }
     }, 1000);
@@ -219,6 +243,7 @@ export class ArenaRoom extends Room<GameState> {
   private backToLobby() {
     this.state.phase = 'waiting';
     this.state.winnerName = '';
+    this.clearArena();
     for (const p of this.state.players.values()) {
       p.alive = true;
       p.lives = START_LIVES;
@@ -243,6 +268,7 @@ export class ArenaRoom extends Room<GameState> {
     p.facing = s.x < 480 ? 1 : -1;
     p.invulnT = invuln ? RESPAWN_INVULN : 0;
     p.invuln = invuln;
+    resetCombatState(p);
   }
 
   private freeSlot() {

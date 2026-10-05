@@ -119,12 +119,16 @@
       <div id="toasts"></div>
     </div>
     <div id="hud" class="hud"></div>
-    <p class="controls-hint">Move <b>A D</b> / <b>← →</b> · Jump <b>W</b> / <b>Space</b> (double jump) · Drop <b>S</b> · Punch <b>J</b> · Kick <b>K</b></p>
+    <p class="controls-hint">
+      Move <b>A D</b> · Jump <b>W</b>/<b>Space</b> ×2 · Drop <b>S</b> · Punch <b>J</b> · Kick <b>K</b> · Block <b>L</b> · Special <b>I</b><br>
+      Dodge = <b>L + direction</b> (air: <b>L</b>) · Arrow keys: <b>Z X C V</b> = Punch Kick Block Special · Grab items by walking into them
+    </p>
     <div id="touch" class="touch hidden">
       <div class="pad">
         <button data-key="left">◀</button><button data-key="down">▼</button><button data-key="right">▶</button>
       </div>
-      <div class="pad">
+      <div class="pad pad-actions">
+        <button data-key="block" class="t-block">B</button><button data-key="special" class="t-special">S</button><span></span>
         <button data-key="punch" class="t-punch">P</button><button data-key="kick" class="t-kick">K</button><button data-key="jump" class="t-jump">▲</button>
       </div>
     </div>

@@ -13,7 +13,7 @@ export const SPRITE_SCALE = 3;
 export const FEET_ORIGIN_Y = 25 / FRAME_H;
 
 export const FRAMES = ['idle0', 'idle1', 'run0', 'run1', 'run2', 'run3',
-  'jump', 'fall', 'punch', 'kick', 'hurt'] as const;
+  'jump', 'fall', 'punch', 'kick', 'hurt', 'block', 'roll'] as const;
 export type FrameName = (typeof FRAMES)[number];
 
 const OUTLINE = '#140c1c';
@@ -180,6 +180,26 @@ function drawFrame(name: FrameName, a: Appearance): Grid {
       arm(g, p, false, [13, 9, 14, 11], [14, 12, 15, 12]);
       break;
     }
+    case 'block': {
+      // crouched guard, both arms crossed in front of the face
+      leg(g, p, true, [9, 17, 11, 22], [8, 23, 11, 24]);
+      leg(g, p, false, [14, 17, 16, 22], [14, 23, 17, 24]);
+      drawTorso(g, p, 0, 1);
+      head(0, 1);
+      arm(g, p, true, [14, 9, 16, 10], [17, 8, 17, 10]);
+      arm(g, p, false, [13, 11, 16, 12], [17, 11, 18, 13]);
+      break;
+    }
+    case 'roll': {
+      // tucked into a ball (the game spins this frame)
+      leg(g, p, true, [9, 18, 13, 20], [9, 21, 12, 22]);
+      rect(g, 10, 12, 15, 18, p.shirt);
+      rect(g, 10, 12, 10, 18, p.shirtDark);
+      head(2, 6);
+      leg(g, p, false, [12, 19, 15, 21], [15, 19, 17, 22]);
+      arm(g, p, false, [14, 15, 15, 17], [15, 18, 16, 18]);
+      break;
+    }
     case 'hurt': {
       arm(g, p, true, [8, 5, 9, 9], [8, 3, 9, 4]);
       leg(g, p, true, [9, 17, 11, 21], [8, 22, 11, 23]);
@@ -257,5 +277,9 @@ export function ensureCharacterTextures(scene: Phaser.Scene, a: Appearance): str
   anim('kick', ['kick'], 1);
   anim('hurt', ['hurt'], 1);
   anim('dead', ['hurt'], 1);
+  anim('block', ['block'], 1);
+  anim('roll', ['roll'], 1);
+  anim('special', ['punch'], 1);
+  anim('dizzy', ['hurt', 'idle0'], 4);
   return key;
 }

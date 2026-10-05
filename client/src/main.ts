@@ -288,6 +288,8 @@ $('#g-code').addEventListener('click', () => {
   toast('Room code copied!');
 });
 
+window.addEventListener('pb-toast', (e) => toast((e as CustomEvent<string>).detail));
+
 function toast(msg: string) {
   const t = document.createElement('div');
   t.className = 'toast';
@@ -329,8 +331,13 @@ function renderHud() {
     name.style.color = SLOT_COLORS[p.slot % SLOT_COLORS.length];
     const playing = s.phase === 'playing' || s.phase === 'countdown' || s.phase === 'ended';
     const hearts = playing ? '♥'.repeat(p.lives) + '♡'.repeat(Math.max(0, START_LIVES - p.lives)) : '';
+    const extras =
+      (p.buff === 'power' ? ' 🥊' : p.buff === 'speed' ? ' ⚡' : '') + (p.hasBomb ? ' 💣' : '');
+    const special = p.id === room.sessionId
+      ? `<br><span class="${p.specialCd ? 'sp-wait' : 'sp-ready'}">SPECIAL ${p.specialCd ? (p.specialCd / 10).toFixed(1) + 's' : 'READY'}</span>`
+      : '';
     card.querySelector('.c-info')!.innerHTML =
-      `<span class="hearts">${hearts}</span> HP ${p.hp}${playing ? ` · ${p.kos} KO` : ''}${p.connected ? '' : ' · reconnecting…'}`;
+      `<span class="hearts">${hearts}</span> HP ${p.hp}${playing ? ` · ${p.kos} KO` : ''}${extras}${p.connected ? '' : ' · reconnecting…'}${special}`;
     card.classList.toggle('out', !p.alive);
   }
 
@@ -389,6 +396,7 @@ const KEYS: Record<string, keyof InputState> = {
   KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
   KeyW: 'jump', ArrowUp: 'jump', Space: 'jump', KeyS: 'down', ArrowDown: 'down',
   KeyJ: 'punch', KeyZ: 'punch', KeyK: 'kick', KeyX: 'kick',
+  KeyL: 'block', KeyC: 'block', ShiftLeft: 'block', KeyI: 'special', KeyV: 'special',
 };
 
 function setKey(k: keyof InputState, down: boolean) {
