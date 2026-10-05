@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Pixel Brawl</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="stars"></div>
+
+  <!-- ================= LOGIN / REGISTER ================= -->
+  <section id="screen-auth" class="screen">
+    <div class="auth-wrap">
+      <h1 class="logo">PIXEL<span>BRAWL</span></h1>
+      <p class="tagline">Make your fighter. Make a room. Knock your friends off the map.</p>
+      <canvas id="auth-hero" width="168" height="156"></canvas>
+      <form id="auth-form" class="panel">
+        <div class="tabs">
+          <button type="button" class="tab active" data-mode="login">LOGIN</button>
+          <button type="button" class="tab" data-mode="register">REGISTER</button>
+        </div>
+        <label>Username<input id="auth-user" autocomplete="username" maxlength="16" required /></label>
+        <label>Password<input id="auth-pass" type="password" autocomplete="current-password" minlength="6" required /></label>
+        <p id="auth-error" class="error"></p>
+        <button id="auth-submit" class="btn btn-gold" type="submit">LOGIN</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================= MAIN MENU ================= -->
+  <section id="screen-menu" class="screen hidden">
+    <header class="topbar">
+      <h1 class="logo small">PIXEL<span>BRAWL</span></h1>
+      <div class="me">
+        <span id="me-name"></span>
+        <span id="me-stats" class="muted"></span>
+        <button id="btn-mute" class="btn btn-small" title="Sound">♪</button>
+        <button id="btn-logout" class="btn btn-small">LOGOUT</button>
+      </div>
+    </header>
+
+    <div class="menu-grid">
+      <!-- Character creator -->
+      <div class="panel creator">
+        <h2>YOUR FIGHTER</h2>
+        <div class="preview-box">
+          <canvas id="preview" width="224" height="208"></canvas>
+          <div class="pose-row">
+            <button class="pose active" data-pose="idle">IDLE</button>
+            <button class="pose" data-pose="run">RUN</button>
+            <button class="pose" data-pose="punch">PUNCH</button>
+            <button class="pose" data-pose="kick">KICK</button>
+          </div>
+        </div>
+        <div class="field"><span>Skin</span><div id="skin-swatches" class="swatches"></div></div>
+        <div class="field"><span>Hair</span><div id="hair-styles" class="chips"></div></div>
+        <div class="color-grid">
+          <label class="color-field">Hair <input type="color" id="c-hairColor" /></label>
+          <label class="color-field">Shirt <input type="color" id="c-shirt" /></label>
+          <label class="color-field">Pants <input type="color" id="c-pants" /></label>
+          <label class="color-field">Shoes <input type="color" id="c-shoes" /></label>
+        </div>
+        <div class="row">
+          <button id="btn-random" class="btn">🎲 RANDOM</button>
+          <button id="btn-save" class="btn btn-gold">SAVE</button>
+        </div>
+        <p id="save-status" class="muted center"></p>
+      </div>
+
+      <!-- Lobby -->
+      <div class="lobby">
+        <div class="panel">
+          <h2>CREATE ROOM</h2>
+          <label>Room name<input id="room-name" maxlength="24" placeholder="Friday Fight Night" /></label>
+          <div class="row">
+            <label class="grow">Max players
+              <select id="room-max">
+                <option>2</option><option>3</option><option>4</option><option>5</option>
+                <option>6</option><option selected>8</option><option>10</option>
+              </select>
+            </label>
+            <label class="check"><input type="checkbox" id="room-private" /> Private</label>
+          </div>
+          <button id="btn-create" class="btn btn-gold wide">CREATE</button>
+        </div>
+
+        <div class="panel">
+          <h2>JOIN WITH CODE</h2>
+          <div class="row">
+            <input id="join-code" class="code-input" maxlength="5" placeholder="ABCDE" />
+            <button id="btn-join" class="btn btn-cyan">JOIN</button>
+          </div>
+        </div>
+
+        <div class="panel rooms-panel">
+          <div class="row between"><h2>PUBLIC ROOMS</h2><button id="btn-refresh" class="btn btn-small">↻</button></div>
+          <ul id="room-list" class="room-list"></ul>
+        </div>
+        <p id="menu-error" class="error"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= GAME ================= -->
+  <section id="screen-game" class="screen hidden">
+    <div class="game-top">
+      <div><span id="g-room-name"></span> <button id="g-code" class="code-pill" title="Click to copy"></button></div>
+      <div class="row">
+        <button id="g-mute" class="btn btn-small">♪</button>
+        <button id="g-leave" class="btn btn-small btn-red">LEAVE</button>
+      </div>
+    </div>
+    <div id="game-wrap">
+      <div id="game"></div>
+      <div id="banner" class="banner hidden"></div>
+      <div id="toasts"></div>
+    </div>
+    <div id="hud" class="hud"></div>
+    <p class="controls-hint">Move <b>A D</b> / <b>← →</b> · Jump <b>W</b> / <b>Space</b> (double jump) · Drop <b>S</b> · Punch <b>J</b> · Kick <b>K</b></p>
+    <div id="touch" class="touch hidden">
+      <div class="pad">
+        <button data-key="left">◀</button><button data-key="down">▼</button><button data-key="right">▶</button>
+      </div>
+      <div class="pad">
+        <button data-key="punch" class="t-punch">P</button><button data-key="kick" class="t-kick">K</button><button data-key="jump" class="t-jump">▲</button>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
