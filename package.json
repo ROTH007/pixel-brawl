@@ -1,0 +1,10 @@
+{
+  "name": "pixel-brawl",
+  "private": true,
+  "description": "Online pixel fighting game — one command to build, one to start (for hosting)",
+  "scripts": {
+    "build": "cd client && npm install --include=dev && npm run build && cd ../server && npm install --include=dev",
+    "start": "cd server && npm start"
+  },
+  "engines": { "node": ">=20" }
+}
